@@ -107,6 +107,7 @@ function renderDeck() {
       ${studyBtn}
       <button class="btn btn-primary" id="btn-add-card">+ Add Card</button>
       <button class="btn btn-ghost" id="btn-import-csv-deck">↑ Import CSV</button>
+      <button class="btn btn-ghost" id="btn-paste-cards">⎘ Paste</button>
     </div>
     <input type="file" id="csv-input-deck" accept=".csv,text/csv" style="display:none" />
     ${list}`;
@@ -200,6 +201,7 @@ function bindEvents() {
   on('btn-study', 'click', startStudy);
   on('btn-import-csv-deck', 'click', () => document.getElementById('csv-input-deck')?.click());
   on('csv-input-deck', 'change', e => handleCsvImport(e.target.files[0], activeDeck));
+  on('btn-paste-cards', 'click', () => showPasteModal());
   qsa('[data-action="edit-card"]').forEach(b =>
     b.addEventListener('click', () => showCardModal(parseInt(b.dataset.idx))));
   qsa('[data-action="delete-card"]').forEach(b =>
@@ -378,6 +380,46 @@ function toast(msg) {
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Paste Import ──────────────────────────────────────────────────────────────
+function showPasteModal() {
+  showModal(
+    'Paste Cards',
+    `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem">
+       One card per line: <code>question - answer</code>
+     </p>
+     <div class="field">
+       <textarea id="m-paste" placeholder="What is H2O? - Water\nCapital of France - Paris" style="min-height:160px"></textarea>
+     </div>`,
+    () => {
+      const text = document.getElementById('m-paste')?.value || '';
+      const cards = parsePasteText(text);
+      if (cards.length === 0) { toast('No valid lines found'); return; }
+      activeDeck.cards.push(...cards);
+      save(db);
+      closeModal();
+      render();
+      toast(`Added ${cards.length} card${cards.length !== 1 ? 's' : ''}`);
+    }
+  );
+  setTimeout(() => document.getElementById('m-paste')?.focus(), 50);
+}
+
+function parsePasteText(text) {
+  const cards = [];
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    // Split on first " - " (space-dash-space) to allow dashes inside answers
+    const idx = line.indexOf(' - ');
+    if (idx === -1) continue;
+    const front = line.slice(0, idx).trim();
+    const back  = line.slice(idx + 3).trim();
+    if (front && back) cards.push({ front, back });
+  }
+  return cards;
 }
 
 // ── CSV Import ────────────────────────────────────────────────────────────────
