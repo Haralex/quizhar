@@ -73,7 +73,9 @@ function renderHome() {
     <div class="section-header">
       <h2>My Decks</h2>
       <button class="btn btn-primary" id="btn-new-deck">+ New Deck</button>
+      <button class="btn btn-ghost" id="btn-import-csv">↑ Import CSV</button>
     </div>
+    <input type="file" id="csv-input" accept=".csv,text/csv" style="display:none" />
     ${grid}`;
 }
 
@@ -104,7 +106,9 @@ function renderDeck() {
       <h2>${esc(d.name)}</h2>
       ${studyBtn}
       <button class="btn btn-primary" id="btn-add-card">+ Add Card</button>
+      <button class="btn btn-ghost" id="btn-import-csv-deck">↑ Import CSV</button>
     </div>
+    <input type="file" id="csv-input-deck" accept=".csv,text/csv" style="display:none" />
     ${list}`;
 }
 
@@ -180,6 +184,8 @@ function bindEvents() {
 
   // Home
   on('btn-new-deck', 'click', () => showDeckModal());
+  on('btn-import-csv', 'click', () => document.getElementById('csv-input')?.click());
+  on('csv-input', 'change', e => handleCsvImport(e.target.files[0], null));
   qsa('[data-action="rename"]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); showDeckModal(b.dataset.id); }));
   qsa('[data-action="delete-deck"]').forEach(b =>
@@ -192,6 +198,8 @@ function bindEvents() {
   // Deck
   on('btn-add-card', 'click', () => showCardModal());
   on('btn-study', 'click', startStudy);
+  on('btn-import-csv-deck', 'click', () => document.getElementById('csv-input-deck')?.click());
+  on('csv-input-deck', 'change', e => handleCsvImport(e.target.files[0], activeDeck));
   qsa('[data-action="edit-card"]').forEach(b =>
     b.addEventListener('click', () => showCardModal(parseInt(b.dataset.idx))));
   qsa('[data-action="delete-card"]').forEach(b =>
@@ -370,6 +378,74 @@ function toast(msg) {
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── CSV Import ────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = splitCSVRow(line);
+    if (cols.length >= 2) rows.push(cols);
+  }
+  return rows;
+}
+
+function splitCSVRow(line) {
+  const cols = [];
+  let cur = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      cols.push(cur.trim()); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+function handleCsvImport(file, targetDeck) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCSV(e.target.result);
+    if (rows.length === 0) { toast('No valid rows found in CSV'); return; }
+
+    // Skip header row if first row looks like a header (contains "question" or "answer")
+    const firstRow = rows[0].map(c => c.toLowerCase());
+    const dataRows = (firstRow.includes('question') || firstRow.includes('answer') || firstRow.includes('front') || firstRow.includes('back'))
+      ? rows.slice(1) : rows;
+
+    if (dataRows.length === 0) { toast('No card data found after header'); return; }
+
+    const cards = dataRows
+      .filter(r => r[0] && r[1])
+      .map(r => ({ front: r[0], back: r[1] }));
+
+    if (cards.length === 0) { toast('No valid question/answer pairs found'); return; }
+
+    if (targetDeck) {
+      // Import into existing deck
+      targetDeck.cards.push(...cards);
+      save(db);
+      render();
+      toast(`Added ${cards.length} card${cards.length !== 1 ? 's' : ''}`);
+    } else {
+      // Create new deck named after the file
+      const name = file.name.replace(/\.csv$/i, '').replace(/[-_]/g, ' ').trim() || 'Imported Deck';
+      db.decks.push({ id: uid(), name, cards });
+      save(db);
+      render();
+      toast(`Created "${name}" with ${cards.length} cards`);
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
