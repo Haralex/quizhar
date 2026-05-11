@@ -408,7 +408,7 @@ function showPasteModal() {
 
 function parsePasteText(text) {
   const cards = [];
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const lines = text.split(/\r\n|\r|\n/);
   for (const raw of lines) {
     // Strip leading bullet markers (-, *, •) then split on first " - "
     const line = raw.trim().replace(/^[-*•]\s+/, '');
