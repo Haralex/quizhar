@@ -387,10 +387,10 @@ function showPasteModal() {
   showModal(
     'Paste Cards',
     `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem">
-       One card per line: <code>question - answer</code>
+       One card per line: <code>question - answer</code> or <code>- question - answer</code>
      </p>
      <div class="field">
-       <textarea id="m-paste" placeholder="What is H2O? - Water\nCapital of France - Paris" style="min-height:160px"></textarea>
+       <textarea id="m-paste" placeholder="- What is H2O? - Water&#10;- Capital of France - Paris" style="min-height:160px"></textarea>
      </div>`,
     () => {
       const text = document.getElementById('m-paste')?.value || '';
@@ -410,9 +410,9 @@ function parsePasteText(text) {
   const cards = [];
   const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
   for (const raw of lines) {
-    const line = raw.trim();
+    // Strip leading bullet markers (-, *, •) then split on first " - "
+    const line = raw.trim().replace(/^[-*•]\s+/, '');
     if (!line) continue;
-    // Split on first " - " (space-dash-space) to allow dashes inside answers
     const idx = line.indexOf(' - ');
     if (idx === -1) continue;
     const front = line.slice(0, idx).trim();
