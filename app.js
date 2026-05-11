@@ -3,9 +3,30 @@
 // ── Storage ──────────────────────────────────────────────────────────────────
 const DB_KEY = 'quizhar_v1';
 
+const EXAMPLE_DECK = {
+  id: 'example-marvel-rivals',
+  name: 'Marvel Rivals',
+  cards: [
+    { front: 'What are the three roles in Marvel Rivals?', back: 'Vanguard (tank) · Duelist (DPS) · Strategist (support)' },
+    { front: 'Who developed Marvel Rivals?', back: 'NetEase Games' },
+    { front: 'How many players are on each team?', back: '6 players (6v6)' },
+    { front: 'What triggers a Team-Up ability?', back: 'Having specific hero combinations active on the same team' },
+    { front: 'Which role does Rocket Raccoon fill?', back: 'Strategist' },
+    { front: 'What is the name of Doctor Strange\'s portal ability?', back: 'Pentagram of Farallah' },
+    { front: 'Which hero uses Symbiote bonds to pull enemies?', back: 'Venom' },
+    { front: 'What are the two primary game modes?', back: 'Convoy (escort) and Domination (point capture)' },
+    { front: 'Which villain\'s time-warping powers set up the game\'s storyline?', back: 'Doctor Doom' },
+    { front: 'Which Vanguard hero absorbs damage to power up a shield?', back: 'Magneto' },
+  ]
+};
+
 function load() {
-  try { return JSON.parse(localStorage.getItem(DB_KEY)) || { decks: [] }; }
-  catch { return { decks: [] }; }
+  try {
+    const data = JSON.parse(localStorage.getItem(DB_KEY)) || { decks: [] };
+    if (!data.decks.find(d => d.id === EXAMPLE_DECK.id)) data.decks.unshift(EXAMPLE_DECK);
+    return data;
+  }
+  catch { return { decks: [EXAMPLE_DECK] }; }
 }
 function save(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
