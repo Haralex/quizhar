@@ -1,8 +1,9 @@
 const CACHE = 'quizhar-v1';
-const ASSETS = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json'];
+const ASSET_NAMES = ['', 'index.html', 'styles.css', 'app.js', 'manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  const base = self.registration.scope;
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSET_NAMES.map(f => base + f))));
   self.skipWaiting();
 });
 
